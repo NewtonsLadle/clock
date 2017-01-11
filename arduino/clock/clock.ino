@@ -35,8 +35,12 @@ int n_twelve = 41;
 int b_button = 32;
 int is_pressed = 0;
 
-// last time incremented
-int last_inc = 0;
+// first time incremented
+int first_inc;
+// number of times normally incremented
+int iter;
+// time of next increment
+int next_inc;
 
 // current hour
 int t_hour = 0;
@@ -238,27 +242,10 @@ void render_hour(int loc_hour) {
 void render() {
   // effective hour is actual hour that shows up
   int eff_hour = t_hour;
-  /*
-  if (minute > 35) {
-    eff_hour = (hour + 1)%12;
-  }
-  */
   clearall();
   render_minute(t_minute);
   render_hour(eff_hour);
 }
-
-void increment() {
-  Serial.println("INCREMENTING");
-  last_inc = now();
-  t_minute = (t_minute + 5)%60;
-  if (t_minute == 35) {
-    t_hour = (t_hour + 1)%12;
-  }
-  render();
-}
-
-
 
 void diagnostics() {
   Serial.println("RUNNING DIAGNOSTIC");
@@ -375,13 +362,32 @@ void diagnostics() {
   Serial.println("FINISHED DIAGNOSTIC");
 }
 
+
+void reset_time() {
+  iter = 1;
+  first_inc = now();
+  next_inc = first_inc + 300;
+}
+
+void increment(int button) {
+  Serial.println("INCREMENTING");
+  t_minute = (t_minute + 5)%60;
+  if (t_minute == 35) {
+    t_hour = (t_hour + 1)%12;
+  }
+  render();
+  if (button == 1) {
+    reset_time();
+  }
+}
+
 void check_button() {
   //Serial.println("CHECKING BUTTON");
   digitalWrite(b_button, HIGH);
   if (digitalRead(b_button) == LOW) {
     //Serial.println("BUTTON PRESSED");
     if (is_pressed == 0) {
-      increment();
+      increment(1);
     }
     is_pressed = 1;
   }
@@ -428,16 +434,19 @@ void setup() {
   clearall();
 
   render();
+
+  reset_time();
 }
 
 void loop() {
+  // if button pressed, increment
   check_button();
-  interval = now() - last_inc;
-  Serial.print(interval);
-  Serial.println(" since last increment");
-  if (interval > 300) {
-    increment();
+  if (now() >= next_inc) {
+    increment(0);
+    iter++;
+    next_inc = first_inc + (300*iter);
   }
+  
   delay(50);
 
 }
